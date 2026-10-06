@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>UKP|boot</title></head>
+<!-- UI Kit relay test page: the Deadlock UI Kit mod loads it in the game's hidden browser to find out whether a
+     page can pass data between the game and a tool on the same PC (http://127.0.0.1). It sends nothing anywhere else. -->
+<body style="background:#111;color:#ddd">UI Kit channel probe
+<script>
+(function () {
+    var LABEL = "relay";
+    function say(t) { document.title = "UKP|" + t + "|end"; }
+    function run() {
+        var m = location.hash.slice(1).split("|"), id = m[0], cmd = m[1], arg = m[2];
+        if (!cmd) return;
+        if (cmd === "echo") {
+            var n = parseInt(arg, 10) || 0, s = "";
+            while (s.length < n) s += "0123456789abcdef";
+            say("echo|" + id + "|" + s.slice(0, n));
+        } else if (cmd === "fetch" || cmd === "edit" || cmd === "secho") {
+            var url = "http://127.0.0.1:8765/" + (cmd === "edit" ? "edit" : cmd === "secho" ? "echo?n=" + (parseInt(arg, 10) || 0) : "ping");
+            try {
+                fetch(url).then(function (r) { return r.text(); })
+                    .then(function (t) { say(cmd + "|" + id + "|ok:" + t); },
+                          function (e) { say(cmd + "|" + id + "|err:" + String(e && e.message || e).replace(/\|/g, "/")); });
+            } catch (e) { say(cmd + "|" + id + "|err:" + String(e && e.message || e).replace(/\|/g, "/")); }
+        }
+    }
+    window.addEventListener("hashchange", run);
+    say("ready|0|" + LABEL + "|" + location.protocol + "|" + navigator.userAgent.replace(/\|/g, "/"));
+    if (location.hash) run();
+})();
+</script></body></html>
