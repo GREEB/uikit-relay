@@ -6,10 +6,26 @@
 <script>
 (function () {
     var LABEL = "relay";
+    var CHUNK = 3800, held = "";   // titles over about 4,000 characters arrive empty (game 6753)
     function say(t) { document.title = "UKP|" + t + "|end"; }
+    function bad(e) { return String(e && e.message || e).replace(/\|/g, "/"); }
     function run() {
         var m = location.hash.slice(1).split("|"), id = m[0], cmd = m[1], arg = m[2];
         if (!cmd) return;
+        if (cmd === "get") {
+            // get|<id>... : the hash is <id>|get|<port>|<path, URI-encoded>; the answer is ok:<length>:<first chunk>
+            var port = parseInt(m[2], 10), path = decodeURIComponent(m[3] || "");
+            if (!(port > 1024 && port < 65536) || path.charAt(0) === "/") { say("get|" + id + "|err:bad request"); return; }
+            fetch("http://127.0.0.1:" + port + "/" + path, { cache: "no-store" }).then(function (r) { return r.text(); })
+                .then(function (t) { held = t; say("get|" + id + "|ok:" + t.length + ":" + t.substr(0, CHUNK)); },
+                      function (e) { held = ""; say("get|" + id + "|err:" + bad(e)); });
+            return;
+        }
+        if (cmd === "chunk") {
+            var n = parseInt(m[2], 10) || 0;
+            say("chunk|" + id + "|" + held.substr(n * CHUNK, CHUNK));
+            return;
+        }
         if (cmd === "echo") {
             var n = parseInt(arg, 10) || 0, s = "";
             while (s.length < n) s += "0123456789abcdef";
