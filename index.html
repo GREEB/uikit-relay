@@ -21,6 +21,15 @@
                       function (e) { held = ""; say("get|" + id + "|err:" + bad(e)); });
             return;
         }
+        if (cmd === "put") {
+            // put|<port>|<path, URI-encoded>|<text, URI-encoded>: POSTs the text, answers ok:<reply> or err:...
+            var pport = parseInt(m[2], 10), ppath = decodeURIComponent(m[3] || ""), body = decodeURIComponent(m.slice(4).join("|"));
+            if (!(pport > 1024 && pport < 65536) || ppath.charAt(0) === "/") { say("put|" + id + "|err:bad request"); return; }
+            fetch("http://127.0.0.1:" + pport + "/" + ppath, { method: "POST", body: body, headers: { "Content-Type": "text/plain" } })
+                .then(function (r) { return r.text(); })
+                .then(function (t) { say("put|" + id + "|ok:" + t.substr(0, 200)); }, function (e) { say("put|" + id + "|err:" + bad(e)); });
+            return;
+        }
         if (cmd === "chunk") {
             var n = parseInt(m[2], 10) || 0;
             say("chunk|" + id + "|" + held.substr(n * CHUNK, CHUNK));
